@@ -1,6 +1,6 @@
 # Flightcalc
 
-Boîte à outils de calculs pour pilote (réglée pour le B1900D), sous forme de web app
+Boîte à outils de calculs pour pilote, sous forme de web app
 installable sur iPhone et utilisable hors ligne. Français / anglais, mode clair et sombre.
 
 ## Outils
@@ -14,7 +14,7 @@ installable sur iPhone et utilisable hors ligne. Français / anglais, mode clair
 | Carburant & performances | CAS → TAS / Mach · Contrôle avitaillement · Autonomie |
 | Outils | Conversions d'unités |
 
-Les valeurs saisies sont mémorisées sur l'appareil.
+Les valeurs saisies sont mémorisées sur l'appareil. L'unité de masse carburant (lb ou kg) se choisit dans les réglages, en bas de l'accueil.
 
 ## Installer sur l'iPhone
 

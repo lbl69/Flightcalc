@@ -65,6 +65,11 @@ main{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-lef
 .row b{display:block;font-weight:600}
 .row span{display:block;font-size:.86rem;color:var(--muted)}
 .row .chev{color:var(--muted);font:500 1.1rem var(--f-mono)}
+.row.set{cursor:default}.row.set:hover{background:none}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex:none}
+.seg button{border:0;background:var(--surface);padding:6px 14px;font:600 .9rem var(--f-mono);cursor:pointer;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--navy);color:var(--on-navy)}
 .foot{margin-top:24px;font-size:.82rem;color:var(--muted)}
 
 /* Outil */
@@ -140,6 +145,8 @@ const fmt = (n, d = 0) => Number.isFinite(n)
 const hm = h => { if (!Number.isFinite(h) || h < 0) return '—'; let m = Math.round(h * 60); return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
 const ms = s => { if (!Number.isFinite(s)) return '—'; s = Math.round(s); return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; };
 const mss = s => { if (!Number.isFinite(s)) return '—'; s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+let fu = sget('fu') === 'kg' ? 'kg' : 'lb';
+const FU = () => fu, FUH = () => fu + '/h', toFU = kg => fu === 'kg' ? kg : kg / LB_KG;
 const ok = (...a) => a.every(Number.isFinite);
 
 /* Atmosphère standard (troposphère) */
@@ -155,6 +162,9 @@ const UI = {
   foot: { fr: 'Outil d’aide au calcul mental et à la vérification. Il ne remplace ni l’AFM, ni le manuel d’exploitation, ni les cartes et l’AIP. Les valeurs saisies restent sur cet appareil.',
           en: 'A cross-check aid for mental arithmetic. It does not replace the AFM, the operations manual, charts or the AIP. Your entries stay on this device.' },
   sign: { fr: 'Changer le signe', en: 'Toggle sign' },
+  settings: { fr: 'Réglages', en: 'Settings' },
+  fuelUnit: { fr: 'Unité de masse carburant', en: 'Fuel mass unit' },
+  fuelUnitS: { fr: 'Pour l’avitaillement, l’autonomie et l’ETA', en: 'Used by uplift, endurance and ETA' },
 };
 const GROUPS = [
   ['quick', { fr: 'Accès rapide', en: 'Quick access' }],
@@ -369,14 +379,14 @@ const MODS = [
     { id: 'dist', l: L('Distance', 'Distance'), u: 'NM', d: 180 },
     { id: 'gs', l: L('Vitesse sol', 'Ground speed'), u: 'kt', d: 250 },
     { id: 'dep', l: L('Heure de départ (option)', 'Departure time (optional)'), u: 'UTC', d: '14:35', type: 'time', opt: 1 },
-    { id: 'ff', l: L('Débit carburant (option)', 'Fuel flow (optional)'), u: 'lb/h', d: 750, opt: 1 },
+    { id: 'ff', l: L('Débit carburant (option)', 'Fuel flow (optional)'), u: FUH, d: 750, opt: 1 },
   ],
   c: v => {
     const h = v.dist / v.gs, o = [{ l: L('Temps de vol', 'Flight time'), s: hm(h), u: '', big: 1 },
       { l: L('Distance par minute', 'Distance per minute'), v: v.gs / 60, u: 'NM/min', p: 2 }];
     const m = /^(\d{1,2}):(\d{2})$/.exec(v.dep || '');
     if (m && ok(h)) { const mins = (+m[1] * 60 + +m[2] + Math.round(h * 60)) % 1440; o.push({ l: 'ETA', s: `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`, u: 'UTC' }); }
-    if (Number.isFinite(v.ff)) o.push({ l: L('Carburant consommé', 'Fuel burn'), v: h * v.ff, u: 'lb', p: 0 });
+    if (Number.isFinite(v.ff)) o.push({ l: L('Carburant consommé', 'Fuel burn'), v: h * v.ff, u: fu, p: 0 });
     return { o };
   } },
 
@@ -425,19 +435,19 @@ const MODS = [
 
 { id: 'uplift', g: 'perf', t: L('Contrôle avitaillement', 'Fuel uplift check'), s: L('Jauges contre litres livrés', 'Gauges against litres delivered'),
   f: [
-    { id: 'pre', l: L('Carburant avant (jauges)', 'Fuel before (gauges)'), u: 'lb', d: 900 },
+    { id: 'pre', l: L('Carburant avant (jauges)', 'Fuel before (gauges)'), u: FU, d: 900 },
     { id: 'upl', l: L('Quantité livrée', 'Uplift'), u: 'L', d: 1100 },
     { id: 'rho', l: L('Densité', 'Density'), u: 'kg/L', d: 0.8 },
-    { id: 'post', l: L('Carburant après (jauges, option)', 'Fuel after (gauges, optional)'), u: 'lb', d: 2810, opt: 1 },
+    { id: 'post', l: L('Carburant après (jauges, option)', 'Fuel after (gauges, optional)'), u: FU, d: 2810, opt: 1 },
   ],
   c: v => {
-    const upLb = v.upl * v.rho / LB_KG, exp = v.pre + upLb;
-    const o = [{ l: L('Carburant attendu', 'Expected fuel'), v: exp, u: 'lb', p: 0, big: 1 },
-      { l: L('Livré', 'Uplifted'), v: upLb, u: 'lb', p: 0 },
-      { l: L('Livré', 'Uplifted'), v: v.upl * v.rho, u: 'kg', p: 0 }];
+    const upLb = toFU(v.upl * v.rho), exp = v.pre + upLb;
+    const o = [{ l: L('Carburant attendu', 'Expected fuel'), v: exp, u: fu, p: 0, big: 1 },
+      { l: L('Livré', 'Uplifted'), v: upLb, u: fu, p: 0 },
+      { l: L('Livré', 'Uplifted'), v: v.upl * v.rho, u: 'kg', p: 0 }].filter((x, i) => !(i === 2 && fu === 'kg'));
     if (Number.isFinite(v.post)) {
       const d = v.post - exp, pc = d / upLb * 100;
-      o.push({ l: L('Écart jauges', 'Gauge difference'), v: d, u: 'lb', p: 0, sign: 1, cls: Math.abs(pc) > 3 ? 'warn' : 'good' });
+      o.push({ l: L('Écart jauges', 'Gauge difference'), v: d, u: fu, p: 0, sign: 1, cls: Math.abs(pc) > 3 ? 'warn' : 'good' });
       o.push({ l: L('Écart / quantité livrée', 'Difference / uplift'), v: pc, u: '%', p: 1, sign: 1, cls: Math.abs(pc) > 3 ? 'warn' : 'good' });
     }
     return { o, n: L('La couleur passe au rouge au-delà de 3 % d’écart. Référez-vous à la tolérance de votre manuel d’exploitation.', 'The colour turns red beyond a 3 % difference. Refer to the tolerance in your operations manual.') };
@@ -445,8 +455,8 @@ const MODS = [
 
 { id: 'endurance', g: 'perf', t: L('Autonomie', 'Endurance'), s: L('Autonomie totale et avant réserve finale', 'Total endurance and before final reserve'),
   f: [
-    { id: 'fob', l: L('Carburant à bord', 'Fuel on board'), u: 'lb', d: 2600 },
-    { id: 'ff', l: L('Débit carburant', 'Fuel flow'), u: 'lb/h', d: 750 },
+    { id: 'fob', l: L('Carburant à bord', 'Fuel on board'), u: FU, d: 2600 },
+    { id: 'ff', l: L('Débit carburant', 'Fuel flow'), u: FUH, d: 750 },
     { id: 'res', l: L('Réserve finale', 'Final reserve'), u: 'min', d: 30 },
   ],
   c: v => {
@@ -454,8 +464,8 @@ const MODS = [
     return { o: [
       { l: L('Autonomie avant réserve', 'Endurance before reserve'), s: hm(tot - v.res / 60), u: '', big: 1 },
       { l: L('Autonomie totale', 'Total endurance'), s: hm(tot), u: '' },
-      { l: L('Réserve finale', 'Final reserve'), v: rl, u: 'lb', p: 0 },
-      { l: L('Utilisable avant réserve', 'Usable before reserve'), v: v.fob - rl, u: 'lb', p: 0 },
+      { l: L('Réserve finale', 'Final reserve'), v: rl, u: fu, p: 0 },
+      { l: L('Utilisable avant réserve', 'Usable before reserve'), v: v.fob - rl, u: fu, p: 0 },
     ], n: L('Réserve finale calculée au débit saisi. Le manuel d’exploitation peut imposer un débit d’attente spécifique.', 'Final reserve computed at the entered flow. Your operations manual may require a specific holding flow.') };
   } },
 
@@ -495,14 +505,15 @@ const view = document.getElementById('view'), ttl = document.getElementById('ttl
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 function renderHome() {
-  ttl.innerHTML = 'Flightcalc<small>B1900D</small>';
+  ttl.textContent = 'Flightcalc';
   back.hidden = true;
   document.title = 'Flightcalc';
   view.innerHTML = GROUPS.map(([g, gl]) => {
     const ms_ = MODS.filter(m => m.g === g);
     return `<section class="grp"><h2>${esc(t(gl))}</h2><div class="list">${ms_.map(m =>
       `<a class="row" href="#${m.id}"><span class="tx"><b>${esc(t(m.t))}</b><span>${esc(t(m.s))}</span></span><span class="chev" aria-hidden="true">›</span></a>`).join('')}</div></section>`;
-  }).join('') + `<p class="foot">${esc(t(UI.foot))}</p>`;
+  }).join('') + `<section class="grp"><h2>${esc(t(UI.settings))}</h2><div class="list"><div class="row set"><span class="tx"><b>${esc(t(UI.fuelUnit))}</b><span>${esc(t(UI.fuelUnitS))}</span></span><span class="seg" role="group" aria-label="${esc(t(UI.fuelUnit))}">${['lb', 'kg'].map(u => `<button type="button" data-fu="${u}" aria-pressed="${fu === u}">${u}</button>`).join('')}</span></div></div></section><p class="foot">${esc(t(UI.foot))}</p>`;
+  view.querySelectorAll('[data-fu]').forEach(b => b.addEventListener('click', () => { fu = b.dataset.fu; sset('fu', fu); renderHome(); }));
 }
 
 function fieldVal(m, f) {
@@ -522,7 +533,7 @@ function fieldHtml(m, f) {
     const im = f.type === 'txt' ? 'decimal' : f.type === 'time' ? 'numeric' : 'decimal';
     const pm = f.neg ? `<button type="button" class="pm" data-pm="${id}" aria-label="${esc(t(UI.sign))}">±</button>` : '';
     const disp = (f.type !== 'txt' && f.type !== 'time' && val !== '' && lang === 'fr') ? val.replace('.', ',') : val;
-    inner = `${pm}<input id="${id}" data-f="${f.id}" type="text" inputmode="${im}" autocomplete="off" spellcheck="false" value="${esc(disp)}" placeholder="${f.opt ? '—' : ''}">${f.u ? `<span class="u">${esc(f.u)}</span>` : ''}`;
+    inner = `${pm}<input id="${id}" data-f="${f.id}" type="text" inputmode="${im}" autocomplete="off" spellcheck="false" value="${esc(disp)}" placeholder="${f.opt ? '—' : ''}">${f.u ? `<span class="u">${esc(typeof f.u === 'function' ? f.u() : f.u)}</span>` : ''}`;
   }
   return `<div class="fld${f.wide ? ' wide' : ''}"><label for="${id}">${esc(t(f.l))}</label><div class="inp">${inner}</div></div>`;
 }
