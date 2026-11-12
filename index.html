@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<!--pwa-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16273b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Flightcalc">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<!--/pwa-->
+<title>Flightcalc</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout : liste d'outils façon checklist, chaque outil = champs en haut, résultats « instrument » en dessous. Colonne unique ≤ 640px. */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --surface-2:#f5f7fa; --fg:#14202e; --muted:#5b6979; --line:#d6dde6;
+  --accent:#a95f00; --accent-soft:#fff1dc; --navy:#16273b; --on-navy:#f3f6fa; --gauge:#ffb43a;
+  --good:#1e7a46; --warn:#b3261e;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0d141d; --surface:#152030; --surface-2:#1b293b; --fg:#e7edf4; --muted:#93a2b3; --line:#26364a;
+  --accent:#ffb43a; --accent-soft:#2c2412; --navy:#1a2a3e; --on-navy:#e7edf4; --good:#5fd08f; --warn:#ff8a80; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0d141d; --surface:#152030; --surface-2:#1b293b; --fg:#e7edf4; --muted:#93a2b3; --line:#26364a;
+  --accent:#ffb43a; --accent-soft:#2c2412; --navy:#1a2a3e; --on-navy:#e7edf4; --good:#5fd08f; --warn:#ff8a80; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.45 var(--f-body);-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--navy)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--navy);color:var(--on-navy);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar-in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:10px;min-height:52px}
+.bar h1{flex:1;margin:0;font:600 1.3rem/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar h1 small{font:500 .78rem var(--f-mono);opacity:.6;letter-spacing:0;text-transform:none;margin-left:6px}
+.iconbtn{background:none;border:1px solid transparent;border-radius:8px;padding:6px 8px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:4px;font-weight:600}
+.iconbtn:hover{border-color:rgba(255,255,255,.25)}
+.lang{font:600 .8rem var(--f-mono);border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:4px 8px}
+
+main{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
+
+/* Accueil */
+.grp{margin-block:18px 0}
+.grp h2{margin:0 0 6px;font:600 .8rem var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 14px;cursor:pointer;text-decoration:none;color:inherit}
+.row:first-child{border-top:0}
+.row:hover{background:var(--surface-2)}
+.row .tx{flex:1;min-width:0}
+.row b{display:block;font-weight:600}
+.row span{display:block;font-size:.86rem;color:var(--muted)}
+.row .chev{color:var(--muted);font:500 1.1rem var(--f-mono)}
+.foot{margin-top:24px;font-size:.82rem;color:var(--muted)}
+
+/* Outil */
+.lead{margin:0 0 14px;color:var(--muted);font-size:.92rem}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 12px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld.wide{grid-column:1/-1}
+.fld label{font-size:.8rem;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.inp{display:flex;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.inp:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.inp input,.inp select{flex:1;min-width:0;border:0;background:transparent;padding:10px 12px;font:500 1.05rem var(--f-mono);outline:none}
+.inp select{font-family:var(--f-body);font-size:1rem;cursor:pointer}
+.inp .u{display:flex;align-items:center;padding:0 12px 0 4px;color:var(--muted);font:500 .85rem var(--f-mono);white-space:nowrap}
+.pm{border:0;border-right:1px solid var(--line);background:var(--surface-2);padding:0 12px;cursor:pointer;font:700 1rem var(--f-mono);color:var(--muted)}
+
+.res{margin-top:18px;background:var(--navy);color:var(--on-navy);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.res .big{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.res .big .k{flex-basis:100%;font:600 .78rem var(--f-display);letter-spacing:.14em;text-transform:uppercase;opacity:.7}
+.res .big .v{font:700 2.4rem/1 var(--f-mono);color:var(--gauge);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.res .big .un{font:500 1rem var(--f-mono);opacity:.75}
+.kv{display:grid;grid-template-columns:1fr auto;gap:0;margin:0}
+.kv dt,.kv dd{margin:0;padding:7px 0;border-top:1px solid rgba(255,255,255,.1)}
+.kv dt{font-size:.92rem;opacity:.82;padding-right:10px}
+.kv dd{font:500 1rem var(--f-mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kv dd .un{opacity:.6;font-size:.85em;margin-left:4px}
+.kv dd.good{color:var(--good)} .kv dd.warn{color:var(--warn)}
+.res .empty{opacity:.7;font-size:.92rem;margin:0}
+.tbl{overflow-x:auto}
+.tbl table{width:100%;border-collapse:collapse;font:500 .95rem var(--f-mono);font-variant-numeric:tabular-nums}
+.tbl th{font:600 .74rem var(--f-display);letter-spacing:.1em;text-transform:uppercase;opacity:.7;text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.18)}
+.tbl td{text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.08)}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl tr.hl td{color:var(--gauge)}
+.note{margin:14px 0 0;font-size:.86rem;color:var(--muted);border-left:3px solid var(--line);padding-left:10px}
+.note b{color:var(--fg)}
+
+.wind{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.wind svg{width:128px;height:128px;flex:none}
+.wind .kv{flex:1;min-width:180px}
+.ring{fill:none;stroke:rgba(255,255,255,.22);stroke-width:1}
+.tick{stroke:rgba(255,255,255,.35);stroke-width:1}
+.rwy{fill:rgba(255,255,255,.18);stroke:rgba(255,255,255,.55);stroke-width:1}
+.cl{stroke:rgba(255,255,255,.6);stroke-width:1;stroke-dasharray:4 4}
+.warr{stroke:var(--gauge);stroke-width:3;stroke-linecap:round}
+.whead{fill:var(--gauge)}
+.card-n{fill:rgba(255,255,255,.6);font:600 9px var(--f-mono)}
+@media (prefers-reduced-motion:no-preference){ .res{transition:opacity .15s} }
+</style>
+</head>
+<body>
+<header class="bar"><div class="bar-in">
+  <button class="iconbtn" id="back" type="button" hidden aria-label="Retour">‹ <span id="backtx">Outils</span></button>
+  <h1 id="ttl">Flightcalc</h1>
+  <button class="iconbtn lang" id="lang" type="button">EN</button>
+</div></header>
+<main id="view"></main>
+
+<script>
+(() => {
+'use strict';
+const NM_FT = 6076.12, FT_M = 0.3048, G = 9.80665, KT_MS = 0.514444, LB_KG = 0.45359237, USG_L = 3.785411784;
+const D2R = Math.PI / 180;
+
+const sget = k => { try { return localStorage.getItem('fc:' + k); } catch (e) { return null; } };
+const sset = (k, v) => { try { localStorage.setItem('fc:' + k, v); } catch (e) {} };
+
+let lang = sget('lang') || ((navigator.language || 'fr').toLowerCase().startsWith('fr') ? 'fr' : 'en');
+const t = o => (o == null ? '' : typeof o === 'string' ? o : (o[lang] ?? o.fr));
+const fmt = (n, d = 0) => Number.isFinite(n)
+  ? new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-GB', { minimumFractionDigits: d, maximumFractionDigits: d }).format(n)
+  : '—';
+const hm = h => { if (!Number.isFinite(h) || h < 0) return '—'; let m = Math.round(h * 60); return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`; };
+const ms = s => { if (!Number.isFinite(s)) return '—'; s = Math.round(s); return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; };
+const mss = s => { if (!Number.isFinite(s)) return '—'; s = Math.round(s); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const ok = (...a) => a.every(Number.isFinite);
+
+/* Atmosphère standard (troposphère) */
+const isaT = hft => 15 - 0.0019812 * hft;
+const pAt = (hft, p0 = 1013.25) => p0 * Math.pow(1 - 6.8755856e-6 * hft, 5.2558797);
+const altOf = p => 145366.45 * (1 - Math.pow(p / 1013.25, 0.190284));
+const densAlt = (p, tc) => 145442.16 * (1 - Math.pow((p / 1013.25) * (288.15 / (tc + 273.15)), 0.234969));
+
+const UI = {
+  back: { fr: 'Outils', en: 'Tools' },
+  results: { fr: 'Résultats', en: 'Results' },
+  empty: { fr: 'Renseignez les champs pour obtenir le résultat.', en: 'Fill in the fields to get a result.' },
+  foot: { fr: 'Outil d’aide au calcul mental et à la vérification. Il ne remplace ni l’AFM, ni le manuel d’exploitation, ni les cartes et l’AIP. Les valeurs saisies restent sur cet appareil.',
+          en: 'A cross-check aid for mental arithmetic. It does not replace the AFM, the operations manual, charts or the AIP. Your entries stay on this device.' },
+  sign: { fr: 'Changer le signe', en: 'Toggle sign' },
+};
+const GROUPS = [
+  ['appr', { fr: 'Descente & approche', en: 'Descent & approach' }],
+  ['alti', { fr: 'Altimétrie & météo', en: 'Altimetry & weather' }],
+  ['nav', { fr: 'Navigation', en: 'Navigation' }],
+  ['perf', { fr: 'Carburant & performances', en: 'Fuel & performance' }],
+  ['util', { fr: 'Outils', en: 'Tools' }],
+];
+
+const L = (fr, en) => ({ fr, en });
+
+/* ---------- Unités pour le convertisseur ---------- */
+const UNITS = [
+  { g: L('Longueur', 'Length'), u: { ft: 0.3048, m: 1, NM: 1852, km: 1000, SM: 1609.344 } },
+  { g: L('Vitesse', 'Speed'), u: { kt: KT_MS, 'km/h': 1 / 3.6, mph: 0.44704, 'm/s': 1, 'ft/min': 0.00508 } },
+  { g: L('Pression', 'Pressure'), u: { hPa: 1, inHg: 33.8639, mmHg: 1.333224 } },
+  { g: L('Température', 'Temperature'), u: { '°C': 'C', '°F': 'F', K: 'K' } },
+  { g: L('Masse', 'Mass'), u: { lb: LB_KG, kg: 1, t: 1000 } },
+  { g: L('Volume', 'Volume'), u: { L: 1, USG: USG_L, 'Imp gal': 4.54609 } },
+];
+
+/* ---------- Les outils ---------- */
+const MODS = [
+{ id: 'descent', g: 'appr', t: L('Plan de descente', 'Descent planning'), s: L('Distance de descente, vario, pente requise', 'Descent distance, rate, required angle'),
+  f: [
+    { id: 'alt', l: L('Altitude actuelle', 'Current altitude'), u: 'ft', d: 17000 },
+    { id: 'tgt', l: L('Altitude visée', 'Target altitude'), u: 'ft', d: 3000 },
+    { id: 'gs', l: L('Vitesse sol', 'Ground speed'), u: 'kt', d: 240 },
+    { id: 'ang', l: L('Pente', 'Path angle'), u: '°', d: 3 },
+    { id: 'av', l: L('Distance disponible (option)', 'Distance available (optional)'), u: 'NM', d: 40, opt: 1 },
+  ],
+  c: v => {
+    const dh = v.alt - v.tgt, fpn = NM_FT * Math.tan(v.ang * D2R), dist = dh / fpn;
+    const o = [
+      { l: L('Début de descente', 'Top of descent'), v: dist, u: 'NM', p: 1, big: 1 },
+      { l: L('Vario', 'Rate of descent'), v: v.gs * fpn / 60, u: 'ft/min', p: 0 },
+      { l: L('Pente', 'Gradient'), v: fpn, u: 'ft/NM', p: 0 },
+      { l: L('Pente', 'Gradient'), v: Math.tan(v.ang * D2R) * 100, u: '%', p: 1 },
+      { l: L('Durée', 'Time'), s: hm(dist / v.gs), u: '' },
+      { l: L('Contrôle « ×3 »', '“×3” cross-check'), v: dh / 1000 * 3, u: 'NM', p: 0 },
+    ];
+    if (Number.isFinite(v.av) && v.av > 0) {
+      const ra = Math.atan(dh / (v.av * NM_FT)) / D2R;
+      o.push({ l: L('Pente requise', 'Required angle'), v: ra, u: '°', p: 1, cls: ra > 3.5 ? 'warn' : '' });
+      o.push({ l: L('Vario requis', 'Required rate'), v: v.gs * dh / v.av / 60, u: 'ft/min', p: 0 });
+    }
+    return { o, n: L('Vario à 3° ≈ GS × 5. Distance ≈ (altitude à perdre en milliers de ft) × 3.', 'At 3°, rate ≈ GS × 5. Distance ≈ (height to lose in thousands of ft) × 3.') };
+  } },
+
+{ id: 'profile', g: 'appr', t: L('Profil d’approche', 'Approach profile'), s: L('Table distance / altitude, CDFA ou paliers', 'Distance / altitude table, CDFA or step-down'),
+  f: [
+    { id: 'thr', l: L('Altitude seuil', 'Threshold elevation'), u: 'ft', d: 520 },
+    { id: 'tch', l: L('Hauteur de passage seuil', 'Threshold crossing height'), u: 'ft', d: 50 },
+    { id: 'ang', l: L('Pente', 'Path angle'), u: '°', d: 3 },
+    { id: 'gs', l: L('Vitesse sol', 'Ground speed'), u: 'kt', d: 120 },
+    { id: 'n', l: L('Distance max', 'Max distance'), u: 'NM', d: 8 },
+    { id: 'mda', l: L('MDA (option)', 'MDA (optional)'), u: 'ft', d: 1240, opt: 1 },
+  ],
+  c: v => {
+    const fpn = NM_FT * Math.tan(v.ang * D2R), n = Math.min(Math.max(Math.round(v.n), 1), 30);
+    const rows = [];
+    let mdaD = NaN;
+    if (Number.isFinite(v.mda)) mdaD = (v.mda - v.thr - v.tch) / fpn;
+    for (let d = 1; d <= n; d++) {
+      const a = v.thr + v.tch + d * fpn;
+      rows.push({ c: [fmt(d, 0), fmt(Math.round(a / 10) * 10), fmt(Math.round((a - v.thr) / 10) * 10), mss(d / v.gs * 3600)], hl: Number.isFinite(mdaD) && Math.ceil(mdaD) === d });
+    }
+    const o = [
+      { l: L('Vario', 'Rate of descent'), v: v.gs * fpn / 60, u: 'ft/min', p: 0, big: 1 },
+      { l: L('Pente', 'Gradient'), v: fpn, u: 'ft/NM', p: 0 },
+    ];
+    if (Number.isFinite(mdaD)) o.push({ l: L('MDA atteinte à', 'MDA reached at'), v: mdaD, u: L('NM du seuil', 'NM from THR'), p: 2 });
+    return { o, tb: { h: [L('NM', 'NM'), L('Altitude', 'Altitude'), L('Hauteur', 'Height'), L('Temps', 'Time')], r: rows },
+      n: L('Distances au seuil, altitudes arrondies à 10 ft. Vérifiez toujours avec la table de la carte d’approche, qui prime. La ligne en couleur est la première distance entière au-delà de la MDA.',
+           'Distances to threshold, altitudes rounded to 10 ft. Always check against the approach chart table, which takes precedence. The highlighted row is the first whole NM beyond the MDA point.') };
+  } },
+
+{ id: 'ctc', g: 'appr', t: L('Correction température froide', 'Cold temperature correction'), s: L('Formule OACI PANS-OPS, plusieurs altitudes', 'ICAO PANS-OPS formula, several altitudes'),
+  f: [
+    { id: 'elev', l: L('Altitude terrain', 'Aerodrome elevation'), u: 'ft', d: 1200 },
+    { id: 'tmp', l: L('Température terrain', 'Aerodrome temperature'), u: '°C', d: -15, neg: 1 },
+    { id: 'alts', l: L('Altitudes publiées (séparées par des espaces)', 'Published altitudes (space separated)'), u: 'ft', d: '4000 3000 2400 1680', type: 'txt', wide: 1 },
+  ],
+  c: v => {
+    const hAA = v.elev * FT_M, dT = v.tmp - (15 - 0.0065 * hAA), L0 = -0.0065;
+    const alts = String(v.alts).split(/[\s;]+/).map(x => parseFloat(x.replace(',', '.'))).filter(Number.isFinite);
+    const rows = alts.map(a => {
+      const hp = (a - v.elev) * FT_M;
+      let c = dT < 0 && hp > 0 ? ((-dT / L0) * Math.log(1 + L0 * hp / (288.15 + L0 * hAA))) / FT_M : 0;
+      const cr = Math.ceil(c / 10) * 10;
+      return { c: [fmt(a), fmt(a - v.elev), '+' + fmt(cr), fmt(a + cr)] };
+    });
+    return { o: [
+      { l: L('Écart ISA au terrain', 'ISA deviation at aerodrome'), v: dT, u: '°C', p: 1, big: 1 },
+    ], tb: rows.length ? { h: [L('Publiée', 'Published'), L('Hauteur', 'Height'), L('Corr.', 'Corr.'), L('Corrigée', 'Corrected')], r: rows } : null,
+      n: L('Corrections arrondies aux 10 ft supérieurs. Appliquez-les selon votre manuel d’exploitation et l’AIP (seuil de température, segments concernés). Ne corrigez pas les altitudes d’une procédure baro-VNAV dont la température limite est respectée sans vérifier la carte.',
+           'Corrections rounded up to the next 10 ft. Apply them per your operations manual and the AIP (temperature threshold, affected segments).') };
+  } },
+
+{ id: 'qnh', g: 'alti', t: L('QNH ↔ QFE', 'QNH ↔ QFE'), s: L('Conversion selon l’altitude terrain', 'Conversion using field elevation'),
+  f: [
+    { id: 'mode', l: L('Sens', 'Direction'), type: 'sel', d: 'qnh', o: [['qnh', L('QNH → QFE', 'QNH → QFE')], ['qfe', L('QFE → QNH', 'QFE → QNH')]] },
+    { id: 'p', l: L('Pression connue', 'Known pressure'), u: 'hPa', d: 1018 },
+    { id: 'elev', l: L('Altitude terrain', 'Field elevation'), u: 'ft', d: 820 },
+  ],
+  c: v => {
+    const k = pAt(v.elev, 1) ;
+    const qnh = v.mode === 'qnh' ? v.p : v.p / k, qfe = v.mode === 'qnh' ? v.p * k : v.p;
+    const r = v.mode === 'qnh' ? qfe : qnh;
+    const ftPerHpa = 96.0 * (isaT(v.elev) + 273.15) / qfe;
+    return { o: [
+      { l: v.mode === 'qnh' ? 'QFE' : 'QNH', v: r, u: 'hPa', p: 1, big: 1 },
+      { l: v.mode === 'qnh' ? 'QFE' : 'QNH', v: r / 33.8639, u: 'inHg', p: 2 },
+      { l: L('Altitude pression terrain', 'Field pressure altitude'), v: altOf(qfe), u: 'ft', p: 0 },
+      { l: L('Écart QNH – QFE', 'QNH – QFE difference'), v: qnh - qfe, u: 'hPa', p: 1 },
+      { l: L('Gradient au terrain', 'Gradient at field'), v: ftPerHpa, u: 'ft/hPa', p: 1 },
+    ], n: L('Calcul en atmosphère standard. Règle mentale : 1 hPa ≈ 28 ft près du niveau de la mer, ≈ 30 ft vers 5000 ft.', 'Standard-atmosphere computation. Rule of thumb: 1 hPa ≈ 28 ft near sea level, ≈ 30 ft around 5000 ft.') };
+  } },
+
+{ id: 'da', g: 'alti', t: L('Altitude pression & densité', 'Pressure & density altitude'), s: L('Pour les performances au décollage', 'For take-off performance'),
+  f: [
+    { id: 'elev', l: L('Altitude terrain', 'Field elevation'), u: 'ft', d: 1500 },
+    { id: 'qnh', l: 'QNH', u: 'hPa', d: 1008 },
+    { id: 'oat', l: L('Température', 'Temperature'), u: '°C', d: 30, neg: 1 },
+  ],
+  c: v => {
+    const qfe = pAt(v.elev, v.qnh), pa = altOf(qfe), da = densAlt(qfe, v.oat);
+    return { o: [
+      { l: L('Altitude densité', 'Density altitude'), v: Math.round(da / 10) * 10, u: 'ft', p: 0, big: 1 },
+      { l: L('Altitude pression', 'Pressure altitude'), v: Math.round(pa / 10) * 10, u: 'ft', p: 0 },
+      { l: L('Température ISA', 'ISA temperature'), v: isaT(pa), u: '°C', p: 1 },
+      { l: L('Écart ISA', 'ISA deviation'), v: v.oat - isaT(pa), u: '°C', p: 1, sign: 1 },
+      { l: 'QFE', v: qfe, u: 'hPa', p: 1 },
+    ], n: L('Altitude pression ≈ altitude terrain + (1013 − QNH) × 27. Altitude densité ≈ Zp + 120 ft par °C d’écart ISA.', 'Pressure altitude ≈ elevation + (1013 − QNH) × 27. Density altitude ≈ PA + 120 ft per °C of ISA deviation.') };
+  } },
+
+{ id: 'cloud', g: 'alti', t: L('Base des nuages', 'Cloud base'), s: L('Estimation par l’écart température / point de rosée', 'Estimate from temperature / dew point spread'),
+  f: [
+    { id: 't', l: L('Température', 'Temperature'), u: '°C', d: 18, neg: 1 },
+    { id: 'td', l: L('Point de rosée', 'Dew point'), u: '°C', d: 11, neg: 1 },
+    { id: 'elev', l: L('Altitude terrain', 'Field elevation'), u: 'ft', d: 500 },
+  ],
+  c: v => {
+    const sp = v.t - v.td, agl = sp * 400;
+    return { o: [
+      { l: L('Base estimée (sol)', 'Estimated base (AGL)'), v: Math.round(agl / 100) * 100, u: 'ft', p: 0, big: 1 },
+      { l: L('Base estimée (sol)', 'Estimated base (AGL)'), v: sp * 122, u: 'm', p: 0 },
+      { l: L('Base estimée (mer)', 'Estimated base (AMSL)'), v: Math.round((agl + v.elev) / 100) * 100, u: 'ft', p: 0 },
+      { l: L('Écart T – Td', 'T – Td spread'), v: sp, u: '°C', p: 1 },
+    ], n: L('400 ft par °C d’écart : valable pour des cumulus d’origine convective, pas pour les stratus ni le brouillard.', '400 ft per °C of spread: valid for convective cumulus, not stratus or fog.') };
+  } },
+
+{ id: 'sixty', g: 'nav', t: L('Règle du 1/60', '1 in 60 rule'), s: L('Erreur de route et correction de cap', 'Track error and heading correction'),
+  f: [
+    { id: 'd1', l: L('Distance parcourue', 'Distance flown'), u: 'NM', d: 30 },
+    { id: 'x', l: L('Écart latéral', 'Off-track distance'), u: 'NM', d: 3 },
+    { id: 'd2', l: L('Distance restante', 'Distance to go'), u: 'NM', d: 45 },
+  ],
+  c: v => {
+    const te = 60 * v.x / v.d1, ca = 60 * v.x / v.d2;
+    return { o: [
+      { l: L('Correction de cap vers la destination', 'Heading correction to destination'), v: te + ca, u: '°', p: 0, big: 1 },
+      { l: L('Erreur de route', 'Track error'), v: te, u: '°', p: 1 },
+      { l: L('Angle de rejointe', 'Closing angle'), v: ca, u: '°', p: 1 },
+    ], n: L('Pour revenir sur la route initiale : corriger du double de l’erreur, puis reprendre le cap corrigé de l’erreur une fois sur la route.', 'To regain the original track: correct by twice the error, then take out half once back on track.') };
+  } },
+
+{ id: 'wind', g: 'nav', t: L('Composantes de vent', 'Wind components'), s: L('Vent de face, arrière et traversier', 'Head, tail and crosswind'),
+  f: [
+    { id: 'rwy', l: L('Piste (QFU ou numéro)', 'Runway (heading or number)'), u: '°', d: 270 },
+    { id: 'wd', l: L('Direction du vent', 'Wind direction'), u: '°', d: 310 },
+    { id: 'ws', l: L('Vitesse du vent', 'Wind speed'), u: 'kt', d: 18 },
+    { id: 'gu', l: L('Rafales (option)', 'Gusts (optional)'), u: 'kt', d: 28, opt: 1 },
+  ],
+  c: v => {
+    const rwy = v.rwy <= 36 ? v.rwy * 10 : v.rwy, a = (v.wd - rwy) * D2R;
+    const hd = v.ws * Math.cos(a), xw = v.ws * Math.sin(a), side = xw >= 0 ? L('droite', 'right') : L('gauche', 'left');
+    const o = [
+      { l: L('Vent traversier', 'Crosswind'), v: Math.abs(xw), u: 'kt · ' + t(side), p: 0, big: 1 },
+      { l: hd >= 0 ? L('Vent de face', 'Headwind') : L('Vent arrière', 'Tailwind'), v: Math.abs(hd), u: 'kt', p: 0, cls: hd < 0 ? 'warn' : '' },
+    ];
+    if (Number.isFinite(v.gu) && v.gu > v.ws) {
+      o.push({ l: L('Traversier en rafale', 'Gust crosswind'), v: Math.abs(v.gu * Math.sin(a)), u: 'kt', p: 0 });
+      o.push({ l: hd >= 0 ? L('Face en rafale', 'Gust headwind') : L('Arrière en rafale', 'Gust tailwind'), v: Math.abs(v.gu * Math.cos(a)), u: 'kt', p: 0 });
+    }
+    let ang = ((v.wd - rwy) % 360 + 540) % 360 - 180;
+    o.push({ l: L('Angle vent / piste', 'Wind / runway angle'), v: Math.abs(ang), u: '°', p: 0 });
+    return { o, svg: windSvg(rwy, v.wd), n: L('Mémo : 30° → ½ du vent en travers, 45° → ¾ (0,7), 60° et plus → la totalité.', 'Memo: 30° → ½ of the wind across, 45° → ¾ (0.7), 60° and more → all of it.') };
+  } },
+
+{ id: 'turn', g: 'nav', t: L('Rayon de virage', 'Turn radius'), s: L('Rayon, taux, facteur de charge', 'Radius, rate, load factor'),
+  f: [
+    { id: 'tas', l: L('Vitesse vraie', 'True airspeed'), u: 'kt', d: 200 },
+    { id: 'bank', l: L('Inclinaison', 'Bank angle'), u: '°', d: 25 },
+  ],
+  c: v => {
+    const V = v.tas * KT_MS, tn = Math.tan(v.bank * D2R), r = V * V / (G * tn), rate = G * tn / V / D2R;
+    return { o: [
+      { l: L('Rayon', 'Radius'), v: r / 1852, u: 'NM', p: 2, big: 1 },
+      { l: L('Rayon', 'Radius'), v: r, u: 'm', p: 0 },
+      { l: L('Diamètre', 'Diameter'), v: 2 * r / 1852, u: 'NM', p: 2 },
+      { l: L('Taux de virage', 'Rate of turn'), v: rate, u: '°/s', p: 2 },
+      { l: L('Durée d’un 360°', 'Time for 360°'), s: ms(360 / rate), u: '' },
+      { l: L('Facteur de charge', 'Load factor'), v: 1 / Math.cos(v.bank * D2R), u: 'g', p: 2 },
+      { l: L('Inclinaison pour taux 1', 'Bank for rate one'), v: Math.atan(3 * D2R * V / G) / D2R, u: '°', p: 0 },
+    ], n: L('Taux 1 (3°/s) : inclinaison ≈ TAS/10 + 7. Rayon taux 1 ≈ TAS/200 NM.', 'Rate one (3°/s): bank ≈ TAS/10 + 7. Rate-one radius ≈ TAS/200 NM.') };
+  } },
+
+{ id: 'eta', g: 'nav', t: L('Temps, distance, ETA', 'Time, distance, ETA'), s: L('Temps de vol, heure d’arrivée, carburant', 'Flight time, arrival time, fuel'),
+  f: [
+    { id: 'dist', l: L('Distance', 'Distance'), u: 'NM', d: 180 },
+    { id: 'gs', l: L('Vitesse sol', 'Ground speed'), u: 'kt', d: 250 },
+    { id: 'dep', l: L('Heure de départ (option)', 'Departure time (optional)'), u: 'UTC', d: '14:35', type: 'time', opt: 1 },
+    { id: 'ff', l: L('Débit carburant (option)', 'Fuel flow (optional)'), u: 'lb/h', d: 750, opt: 1 },
+  ],
+  c: v => {
+    const h = v.dist / v.gs, o = [{ l: L('Temps de vol', 'Flight time'), s: hm(h), u: '', big: 1 },
+      { l: L('Distance par minute', 'Distance per minute'), v: v.gs / 60, u: 'NM/min', p: 2 }];
+    const m = /^(\d{1,2}):(\d{2})$/.exec(v.dep || '');
+    if (m && ok(h)) { const mins = (+m[1] * 60 + +m[2] + Math.round(h * 60)) % 1440; o.push({ l: 'ETA', s: `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`, u: 'UTC' }); }
+    if (Number.isFinite(v.ff)) o.push({ l: L('Carburant consommé', 'Fuel burn'), v: h * v.ff, u: 'lb', p: 0 });
+    return { o };
+  } },
+
+{ id: 'tas', g: 'perf', t: L('CAS → TAS / Mach', 'CAS → TAS / Mach'), s: L('Avec compressibilité, atmosphère réelle', 'Compressible, actual temperature'),
+  f: [
+    { id: 'cas', l: L('Vitesse conventionnelle', 'Calibrated airspeed'), u: 'kt', d: 200 },
+    { id: 'pa', l: L('Altitude pression', 'Pressure altitude'), u: 'ft', d: 16000 },
+    { id: 'oat', l: 'OAT', u: '°C', d: -15, neg: 1 },
+  ],
+  c: v => {
+    const P0 = 1013.25, a0 = 661.4786, P = pAt(v.pa);
+    const qc = P0 * (Math.pow(1 + 0.2 * Math.pow(v.cas / a0, 2), 3.5) - 1);
+    const M = Math.sqrt(5 * (Math.pow(qc / P + 1, 2 / 7) - 1)), a = 38.967854 * Math.sqrt(v.oat + 273.15);
+    return { o: [
+      { l: 'TAS', v: M * a, u: 'kt', p: 0, big: 1 },
+      { l: 'Mach', v: M, u: '', p: 3 },
+      { l: L('Température ISA', 'ISA temperature'), v: isaT(v.pa), u: '°C', p: 1 },
+      { l: L('Écart ISA', 'ISA deviation'), v: v.oat - isaT(v.pa), u: '°C', p: 1, sign: 1 },
+      { l: L('Règle des 2 % / 1000 ft', '2 % per 1000 ft rule'), v: v.cas * (1 + 0.02 * v.pa / 1000), u: 'kt', p: 0 },
+    ] };
+  } },
+
+{ id: 'fuel', g: 'perf', t: L('Conversion carburant', 'Fuel conversion'), s: L('lb, kg, litres, gallons US', 'lb, kg, litres, US gallons'),
+  f: [
+    { id: 'q', l: L('Quantité', 'Quantity'), d: 2500 },
+    { id: 'unit', l: L('Unité', 'Unit'), type: 'sel', d: 'lb', o: [['lb', 'lb'], ['kg', 'kg'], ['L', L('litres', 'litres')], ['USG', 'USG']] },
+    { id: 'rho', l: L('Densité Jet A-1', 'Jet A-1 density'), u: 'kg/L', d: 0.8 },
+  ],
+  c: v => {
+    const kg = { lb: v.q * LB_KG, kg: v.q, L: v.q * v.rho, USG: v.q * USG_L * v.rho }[v.unit];
+    const all = [['lb', kg / LB_KG, 0], ['kg', kg, 0], ['L', kg / v.rho, 0], ['USG', kg / v.rho / USG_L, 1]];
+    const o = all.filter(x => x[0] !== v.unit).map((x, i) => ({ l: { lb: L('Livres', 'Pounds'), kg: L('Kilogrammes', 'Kilograms'), L: L('Litres', 'Litres'), USG: L('Gallons US', 'US gallons') }[x[0]], v: x[1], u: x[0], p: x[2], big: i === 0 }));
+    return { o, n: L('Densité Jet A-1 : 0,775 à 0,840 kg/L selon la température. Utilisez celle du bon de livraison.', 'Jet A-1 density: 0.775 to 0.840 kg/L depending on temperature. Use the figure on the fuel receipt.') };
+  } },
+
+{ id: 'uplift', g: 'perf', t: L('Contrôle avitaillement', 'Fuel uplift check'), s: L('Jauges contre litres livrés', 'Gauges against litres delivered'),
+  f: [
+    { id: 'pre', l: L('Carburant avant (jauges)', 'Fuel before (gauges)'), u: 'lb', d: 900 },
+    { id: 'upl', l: L('Quantité livrée', 'Uplift'), u: 'L', d: 1100 },
+    { id: 'rho', l: L('Densité', 'Density'), u: 'kg/L', d: 0.8 },
+    { id: 'post', l: L('Carburant après (jauges, option)', 'Fuel after (gauges, optional)'), u: 'lb', d: 2810, opt: 1 },
+  ],
+  c: v => {
+    const upLb = v.upl * v.rho / LB_KG, exp = v.pre + upLb;
+    const o = [{ l: L('Carburant attendu', 'Expected fuel'), v: exp, u: 'lb', p: 0, big: 1 },
+      { l: L('Livré', 'Uplifted'), v: upLb, u: 'lb', p: 0 },
+      { l: L('Livré', 'Uplifted'), v: v.upl * v.rho, u: 'kg', p: 0 }];
+    if (Number.isFinite(v.post)) {
+      const d = v.post - exp, pc = d / upLb * 100;
+      o.push({ l: L('Écart jauges', 'Gauge difference'), v: d, u: 'lb', p: 0, sign: 1, cls: Math.abs(pc) > 3 ? 'warn' : 'good' });
+      o.push({ l: L('Écart / quantité livrée', 'Difference / uplift'), v: pc, u: '%', p: 1, sign: 1, cls: Math.abs(pc) > 3 ? 'warn' : 'good' });
+    }
+    return { o, n: L('La couleur passe au rouge au-delà de 3 % d’écart. Référez-vous à la tolérance de votre manuel d’exploitation.', 'The colour turns red beyond a 3 % difference. Refer to the tolerance in your operations manual.') };
+  } },
+
+{ id: 'endurance', g: 'perf', t: L('Autonomie', 'Endurance'), s: L('Autonomie totale et avant réserve finale', 'Total endurance and before final reserve'),
+  f: [
+    { id: 'fob', l: L('Carburant à bord', 'Fuel on board'), u: 'lb', d: 2600 },
+    { id: 'ff', l: L('Débit carburant', 'Fuel flow'), u: 'lb/h', d: 750 },
+    { id: 'res', l: L('Réserve finale', 'Final reserve'), u: 'min', d: 30 },
+  ],
+  c: v => {
+    const tot = v.fob / v.ff, rl = v.ff * v.res / 60;
+    return { o: [
+      { l: L('Autonomie avant réserve', 'Endurance before reserve'), s: hm(tot - v.res / 60), u: '', big: 1 },
+      { l: L('Autonomie totale', 'Total endurance'), s: hm(tot), u: '' },
+      { l: L('Réserve finale', 'Final reserve'), v: rl, u: 'lb', p: 0 },
+      { l: L('Utilisable avant réserve', 'Usable before reserve'), v: v.fob - rl, u: 'lb', p: 0 },
+    ], n: L('Réserve finale calculée au débit saisi. Le manuel d’exploitation peut imposer un débit d’attente spécifique.', 'Final reserve computed at the entered flow. Your operations manual may require a specific holding flow.') };
+  } },
+
+{ id: 'conv', g: 'util', t: L('Conversions d’unités', 'Unit conversion'), s: L('Longueur, vitesse, pression, température…', 'Length, speed, pressure, temperature…'),
+  f: [
+    { id: 'val', l: L('Valeur', 'Value'), d: 1000, neg: 1 },
+    { id: 'unit', l: L('Unité', 'Unit'), type: 'sel', d: 'ft', units: 1 },
+  ],
+  c: v => {
+    const grp = UNITS.find(g => v.unit in g.u); if (!grp) return null;
+    let o;
+    if (grp.u[v.unit] === 'C' || grp.u[v.unit] === 'F' || grp.u[v.unit] === 'K') {
+      const c = v.unit === '°C' ? v.val : v.unit === '°F' ? (v.val - 32) * 5 / 9 : v.val - 273.15;
+      o = [['°C', c], ['°F', c * 9 / 5 + 32], ['K', c + 273.15]].filter(x => x[0] !== v.unit).map(x => ({ l: x[0], v: x[1], u: x[0], p: 1 }));
+    } else {
+      const base = v.val * grp.u[v.unit];
+      o = Object.entries(grp.u).filter(([k]) => k !== v.unit).map(([k, f]) => { const r = base / f; return { l: k, v: r, u: k, p: Math.abs(r) >= 100 ? 0 : Math.abs(r) >= 1 ? 2 : 4 }; });
+    }
+    o[0].big = 1;
+    return { o };
+  } },
+];
+
+function windSvg(rwy, wd) {
+  let ticks = '';
+  for (let i = 0; i < 360; i += 30) ticks += `<line class="tick" x1="0" y1="-54" x2="0" y2="${i % 90 ? -50 : -47}" transform="rotate(${i})"/>`;
+  return `<svg viewBox="-60 -60 120 120" role="img" aria-label="Wind ${Math.round(wd)}° runway ${Math.round(rwy)}°">
+    <circle class="ring" r="54"/>${ticks}
+    <text class="card-n" x="0" y="-38" text-anchor="middle">N</text>
+    <g transform="rotate(${rwy})"><rect class="rwy" x="-6" y="-36" width="12" height="72" rx="1"/><line class="cl" x1="0" y1="-32" x2="0" y2="32"/></g>
+    <g transform="rotate(${wd})"><line class="warr" x1="0" y1="-58" x2="0" y2="-16"/><path class="whead" d="M-7,-22 L0,-10 L7,-22 Z"/></g>
+  </svg>`;
+}
+
+/* ---------- Rendu ---------- */
+const view = document.getElementById('view'), ttl = document.getElementById('ttl'), back = document.getElementById('back');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function renderHome() {
+  ttl.innerHTML = 'Flightcalc<small>B1900D</small>';
+  back.hidden = true;
+  document.title = 'Flightcalc';
+  view.innerHTML = GROUPS.map(([g, gl]) => {
+    const ms_ = MODS.filter(m => m.g === g);
+    return `<section class="grp"><h2>${esc(t(gl))}</h2><div class="list">${ms_.map(m =>
+      `<a class="row" href="#${m.id}"><span class="tx"><b>${esc(t(m.t))}</b><span>${esc(t(m.s))}</span></span><span class="chev" aria-hidden="true">›</span></a>`).join('')}</div></section>`;
+  }).join('') + `<p class="foot">${esc(t(UI.foot))}</p>`;
+}
+
+function fieldVal(m, f) {
+  const s = sget(m.id + '.' + f.id);
+  return s !== null ? s : String(f.d ?? '');
+}
+
+function fieldHtml(m, f) {
+  const id = `f-${m.id}-${f.id}`, val = fieldVal(m, f);
+  let inner;
+  if (f.type === 'sel') {
+    const opts = f.units
+      ? UNITS.map(g => `<optgroup label="${esc(t(g.g))}">${Object.keys(g.u).map(k => `<option value="${esc(k)}"${k === val ? ' selected' : ''}>${esc(k)}</option>`).join('')}</optgroup>`).join('')
+      : f.o.map(([v, l]) => `<option value="${esc(v)}"${v === val ? ' selected' : ''}>${esc(t(l))}</option>`).join('');
+    inner = `<select id="${id}" data-f="${f.id}">${opts}</select>`;
+  } else {
+    const im = f.type === 'txt' ? 'decimal' : f.type === 'time' ? 'numeric' : 'decimal';
+    const pm = f.neg ? `<button type="button" class="pm" data-pm="${id}" aria-label="${esc(t(UI.sign))}">±</button>` : '';
+    const disp = (f.type !== 'txt' && f.type !== 'time' && val !== '' && lang === 'fr') ? val.replace('.', ',') : val;
+    inner = `${pm}<input id="${id}" data-f="${f.id}" type="text" inputmode="${im}" autocomplete="off" spellcheck="false" value="${esc(disp)}" placeholder="${f.opt ? '—' : ''}">${f.u ? `<span class="u">${esc(f.u)}</span>` : ''}`;
+  }
+  return `<div class="fld${f.wide ? ' wide' : ''}"><label for="${id}">${esc(t(f.l))}</label><div class="inp">${inner}</div></div>`;
+}
+
+function readVals(m) {
+  const v = {};
+  for (const f of m.f) {
+    const el = document.getElementById(`f-${m.id}-${f.id}`);
+    const raw = el ? el.value : '';
+    if (f.type === 'sel' || f.type === 'txt' || f.type === 'time') v[f.id] = raw.trim();
+    else { const s = raw.replace(/\s/g, '').replace(',', '.'); v[f.id] = s === '' ? NaN : Number(s); }
+  }
+  return v;
+}
+
+function outVal(x) {
+  if (x.s != null) return x.s;
+  if (!Number.isFinite(x.v)) return '—';
+  return (x.sign && x.v > 0 ? '+' : '') + fmt(x.v, x.p ?? 0) + (x.suf || '');
+}
+
+function computeAndShow(m) {
+  const v = readVals(m), res = document.getElementById('res');
+  const required = m.f.filter(f => !f.opt && f.type !== 'sel');
+  const missing = required.some(f => (f.type === 'txt' || f.type === 'time') ? !v[f.id] : !Number.isFinite(v[f.id]));
+  let r = null;
+  if (!missing) { try { r = m.c(v); } catch (e) { r = null; } }
+  if (!r || !r.o || !r.o.some(x => x.s != null || Number.isFinite(x.v))) { res.innerHTML = `<p class="empty">${esc(t(UI.empty))}</p>`; return; }
+  const big = r.o.find(x => x.big) || r.o[0];
+  const rest = r.o.filter(x => x !== big);
+  let html = `<div class="big"><span class="k">${esc(t(big.l))}</span><span class="v">${esc(outVal(big))}</span><span class="un">${esc(t(big.u))}</span></div>`;
+  const kv = rest.length ? `<dl class="kv">${rest.map(x => `<dt>${esc(t(x.l))}</dt><dd class="${x.cls || ''}">${esc(outVal(x))}${x.u ? `<span class="un">${esc(t(x.u))}</span>` : ''}</dd>`).join('')}</dl>` : '';
+  if (r.svg) html += `<div class="wind">${r.svg}${kv}</div>`; else html += kv;
+  if (r.tb) html += `<div class="tbl"><table><thead><tr>${r.tb.h.map(h => `<th scope="col">${esc(t(h))}</th>`).join('')}</tr></thead><tbody>${r.tb.r.map(row => `<tr${row.hl ? ' class="hl"' : ''}>${row.c.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  res.innerHTML = html;
+  const note = document.getElementById('note');
+  if (note) { note.hidden = !r.n; note.textContent = r.n ? t(r.n) : ''; }
+}
+
+function renderMod(m) {
+  ttl.textContent = t(m.t);
+  document.title = t(m.t) + ' · Flightcalc';
+  back.hidden = false;
+  document.getElementById('backtx').textContent = t(UI.back);
+  view.innerHTML = `<p class="lead">${esc(t(m.s))}</p>
+    <form class="fields" id="frm" autocomplete="off">${m.f.map(f => fieldHtml(m, f)).join('')}</form>
+    <section class="res" id="res" aria-live="polite" aria-label="${esc(t(UI.results))}"></section>
+    <p class="note" id="note" hidden></p>`;
+  const frm = document.getElementById('frm');
+  frm.addEventListener('submit', e => e.preventDefault());
+  const save = el => { const f = el.dataset.f; let val = el.value; if (el.tagName === 'INPUT' && el.inputMode === 'decimal') val = val.replace(',', '.'); sset(m.id + '.' + f, val); };
+  frm.addEventListener('input', e => { if (e.target.dataset.f) save(e.target); computeAndShow(m); });
+  frm.addEventListener('change', e => { if (e.target.dataset.f) save(e.target); computeAndShow(m); });
+  frm.addEventListener('click', e => {
+    const b = e.target.closest('[data-pm]'); if (!b) return;
+    const el = document.getElementById(b.dataset.pm);
+    el.value = el.value.trim().startsWith('-') ? el.value.trim().slice(1) : '-' + el.value.trim();
+    save(el); computeAndShow(m);
+  });
+  computeAndShow(m);
+  window.scrollTo(0, 0);
+}
+
+function route() {
+  const id = location.hash.replace('#', '');
+  const m = MODS.find(x => x.id === id);
+  document.documentElement.lang = lang;
+  document.getElementById('lang').textContent = lang === 'fr' ? 'EN' : 'FR';
+  document.getElementById('lang').setAttribute('aria-label', lang === 'fr' ? 'Switch to English' : 'Passer en français');
+  back.setAttribute('aria-label', t(UI.back));
+  if (m) renderMod(m); else renderHome();
+}
+
+let fromHome = false, lastHash = location.hash;
+window.addEventListener('hashchange', () => { fromHome = !lastHash && !!location.hash; lastHash = location.hash; });
+back.addEventListener('click', () => { if (fromHome) history.back(); else location.hash = ''; });
+document.getElementById('lang').addEventListener('click', () => { lang = lang === 'fr' ? 'en' : 'fr'; sset('lang', lang); route(); });
+window.addEventListener('hashchange', route);
+route();
+
+window.FC = { MODS, fmt };
+if ('serviceWorker' in navigator && location.protocol === 'https:' && window.top === window.self) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+})();
+</script>
+</body>
+</html>
