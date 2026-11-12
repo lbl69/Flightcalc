@@ -84,6 +84,7 @@ main{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-lef
 .res .big{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
 .res .big .k{flex-basis:100%;font:600 .78rem var(--f-display);letter-spacing:.14em;text-transform:uppercase;opacity:.7}
 .res .big .v{font:700 2.4rem/1 var(--f-mono);color:var(--gauge);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.res .big .v.long{font-size:1.55rem;line-height:1.15}
 .res .big .un{font:500 1rem var(--f-mono);opacity:.75}
 .kv{display:grid;grid-template-columns:1fr auto;gap:0;margin:0}
 .kv dt,.kv dd{margin:0;padding:7px 0;border-top:1px solid rgba(255,255,255,.1)}
@@ -156,6 +157,7 @@ const UI = {
   sign: { fr: 'Changer le signe', en: 'Toggle sign' },
 };
 const GROUPS = [
+  ['quick', { fr: 'Accès rapide', en: 'Quick access' }],
   ['appr', { fr: 'Descente & approche', en: 'Descent & approach' }],
   ['alti', { fr: 'Altimétrie & météo', en: 'Altimetry & weather' }],
   ['nav', { fr: 'Navigation', en: 'Navigation' }],
@@ -397,17 +399,28 @@ const MODS = [
     ] };
   } },
 
-{ id: 'fuel', g: 'perf', t: L('Conversion carburant', 'Fuel conversion'), s: L('lb, kg, litres, gallons US', 'lb, kg, litres, US gallons'),
+{ id: 'fuel', g: 'quick', t: L('Carburant', 'Fuel'), s: L('lb → kg → L · tapez dans n’importe quelle case', 'lb → kg → L · type in any box'),
   f: [
-    { id: 'q', l: L('Quantité', 'Quantity'), d: 2500 },
-    { id: 'unit', l: L('Unité', 'Unit'), type: 'sel', d: 'lb', o: [['lb', 'lb'], ['kg', 'kg'], ['L', L('litres', 'litres')], ['USG', 'USG']] },
-    { id: 'rho', l: L('Densité Jet A-1', 'Jet A-1 density'), u: 'kg/L', d: 0.8 },
+    { id: 'lb', l: L('Livres', 'Pounds'), u: 'lb', d: 2500, sync: 1 },
+    { id: 'kg', l: L('Kilogrammes', 'Kilograms'), u: 'kg', d: 1134, sync: 1 },
+    { id: 'L', l: L('Litres', 'Litres'), u: 'L', d: 1417, sync: 1 },
+    { id: 'USG', l: L('Gallons US', 'US gallons'), u: 'USG', d: 374.5, sync: 1 },
+    { id: 'rho', l: L('Densité Jet A-1', 'Jet A-1 density'), u: 'kg/L', d: 0.8, wide: 1 },
   ],
+  sync: (src, v) => {
+    const kg = { lb: v.lb * LB_KG, kg: v.kg, L: v.L * v.rho, USG: v.USG * USG_L * v.rho }[src];
+    if (!Number.isFinite(kg) || !(v.rho > 0)) return null;
+    return { lb: [kg / LB_KG, 0], kg: [kg, 0], L: [kg / v.rho, 0], USG: [kg / v.rho / USG_L, 1] };
+  },
   c: v => {
-    const kg = { lb: v.q * LB_KG, kg: v.q, L: v.q * v.rho, USG: v.q * USG_L * v.rho }[v.unit];
-    const all = [['lb', kg / LB_KG, 0], ['kg', kg, 0], ['L', kg / v.rho, 0], ['USG', kg / v.rho / USG_L, 1]];
-    const o = all.filter(x => x[0] !== v.unit).map((x, i) => ({ l: { lb: L('Livres', 'Pounds'), kg: L('Kilogrammes', 'Kilograms'), L: L('Litres', 'Litres'), USG: L('Gallons US', 'US gallons') }[x[0]], v: x[1], u: x[0], p: x[2], big: i === 0 }));
-    return { o, n: L('Densité Jet A-1 : 0,775 à 0,840 kg/L selon la température. Utilisez celle du bon de livraison.', 'Jet A-1 density: 0.775 to 0.840 kg/L depending on temperature. Use the figure on the fuel receipt.') };
+    const kg = v.lb * LB_KG;
+    return { o: [
+      { l: L('Livres → kilos → litres', 'Pounds → kilos → litres'), s: `${fmt(v.lb)} → ${fmt(kg)} → ${fmt(kg / v.rho)}`, u: 'lb → kg → L', big: 1 },
+      { l: L('1 lb', '1 lb'), v: LB_KG / v.rho, u: 'L', p: 3 },
+      { l: L('1 L', '1 L'), v: v.rho / LB_KG, u: 'lb', p: 3 },
+      { l: L('1 000 lb', '1,000 lb'), v: 1000 * LB_KG / v.rho, u: 'L', p: 0 },
+    ], n: L('kg = lb × 0,4536 · L = kg ÷ densité. Densité Jet A-1 : 0,775 à 0,840 kg/L selon la température ; prenez celle du bon de livraison.',
+             'kg = lb × 0.4536 · L = kg ÷ density. Jet A-1 density: 0.775 to 0.840 kg/L depending on temperature; use the figure on the fuel receipt.') };
   } },
 
 { id: 'uplift', g: 'perf', t: L('Contrôle avitaillement', 'Fuel uplift check'), s: L('Jauges contre litres livrés', 'Gauges against litres delivered'),
@@ -540,7 +553,7 @@ function computeAndShow(m) {
   if (!r || !r.o || !r.o.some(x => x.s != null || Number.isFinite(x.v))) { res.innerHTML = `<p class="empty">${esc(t(UI.empty))}</p>`; return; }
   const big = r.o.find(x => x.big) || r.o[0];
   const rest = r.o.filter(x => x !== big);
-  let html = `<div class="big"><span class="k">${esc(t(big.l))}</span><span class="v">${esc(outVal(big))}</span><span class="un">${esc(t(big.u))}</span></div>`;
+  let html = `<div class="big"><span class="k">${esc(t(big.l))}</span><span class="v${outVal(big).length > 9 ? ' long' : ''}">${esc(outVal(big))}</span><span class="un">${esc(t(big.u))}</span></div>`;
   const kv = rest.length ? `<dl class="kv">${rest.map(x => `<dt>${esc(t(x.l))}</dt><dd class="${x.cls || ''}">${esc(outVal(x))}${x.u ? `<span class="un">${esc(t(x.u))}</span>` : ''}</dd>`).join('')}</dl>` : '';
   if (r.svg) html += `<div class="wind">${r.svg}${kv}</div>`; else html += kv;
   if (r.tb) html += `<div class="tbl"><table><thead><tr>${r.tb.h.map(h => `<th scope="col">${esc(t(h))}</th>`).join('')}</tr></thead><tbody>${r.tb.r.map(row => `<tr${row.hl ? ' class="hl"' : ''}>${row.c.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -561,7 +574,24 @@ function renderMod(m) {
   const frm = document.getElementById('frm');
   frm.addEventListener('submit', e => e.preventDefault());
   const save = el => { const f = el.dataset.f; let val = el.value; if (el.tagName === 'INPUT' && el.inputMode === 'decimal') val = val.replace(',', '.'); sset(m.id + '.' + f, val); };
-  frm.addEventListener('input', e => { if (e.target.dataset.f) save(e.target); computeAndShow(m); });
+  const syncFrom = src => {
+    if (!m.sync) return;
+    const out = m.sync(src, readVals(m)); if (!out) return;
+    for (const [k, [val, d]] of Object.entries(out)) {
+      if (k === src) continue;
+      const el = document.getElementById(`f-${m.id}-${k}`);
+      const r = Math.round(val * 10 ** d) / 10 ** d;
+      el.value = lang === 'fr' ? String(r).replace('.', ',') : String(r);
+      save(el);
+    }
+  };
+  frm.addEventListener('input', e => {
+    const f = e.target.dataset.f; if (!f) return;
+    save(e.target);
+    const fd = m.f.find(x => x.id === f);
+    if (m.sync) { if (fd && fd.sync) { sset(m.id + '._src', f); syncFrom(f); } else syncFrom(sget(m.id + '._src') || 'lb'); }
+    computeAndShow(m);
+  });
   frm.addEventListener('change', e => { if (e.target.dataset.f) save(e.target); computeAndShow(m); });
   frm.addEventListener('click', e => {
     const b = e.target.closest('[data-pm]'); if (!b) return;

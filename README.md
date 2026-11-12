@@ -7,10 +7,11 @@ installable sur iPhone et utilisable hors ligne. Français / anglais, mode clair
 
 | Groupe | Outils |
 |---|---|
+| Accès rapide | Carburant lb → kg → L (cases liées, densité réglable) |
 | Descente & approche | Plan de descente · Profil d'approche (table distance/altitude, MDA) · Correction température froide (OACI PANS-OPS) |
 | Altimétrie & météo | QNH ↔ QFE · Altitude pression & densité · Base des nuages |
 | Navigation | Règle du 1/60 · Composantes de vent · Rayon de virage · Temps, distance, ETA |
-| Carburant & performances | CAS → TAS / Mach · Conversion carburant · Contrôle avitaillement · Autonomie |
+| Carburant & performances | CAS → TAS / Mach · Contrôle avitaillement · Autonomie |
 | Outils | Conversions d'unités |
 
 Les valeurs saisies sont mémorisées sur l'appareil.
