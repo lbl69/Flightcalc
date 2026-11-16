@@ -7,7 +7,7 @@ installable sur iPhone et utilisable hors ligne. Français / anglais, mode clair
 
 | Groupe | Outils |
 |---|---|
-| Accès rapide | Carburant lb → kg → L (cases liées, densité réglable) |
+| Accès rapide | Carburant lb → kg → L (cases liées, densité réglable) · Commande carburant (litres par aile, règle × 0,32 et valeur exacte) |
 | Descente & approche | Plan de descente · Profil d'approche (table distance/altitude, MDA) · Correction température froide (OACI PANS-OPS) |
 | Altimétrie & météo | QNH ↔ QFE · Altitude pression & densité · Base des nuages |
 | Navigation | Règle du 1/60 · Composantes de vent · Rayon de virage · Temps, distance, ETA |

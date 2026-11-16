@@ -47,6 +47,7 @@ button,input,select{font:inherit;color:inherit}
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .bar-in{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:10px;min-height:52px}
 .bar h1{flex:1;margin:0;font:600 1.3rem/1 var(--f-display);letter-spacing:.02em;text-transform:uppercase;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar h1.sm{font-size:1.05rem}
 .bar h1 small{font:500 .78rem var(--f-mono);opacity:.6;letter-spacing:0;text-transform:none;margin-left:6px}
 .iconbtn{background:none;border:1px solid transparent;border-radius:8px;padding:6px 8px;cursor:pointer;color:inherit;display:inline-flex;align-items:center;gap:4px;font-weight:600}
 .iconbtn:hover{border-color:rgba(255,255,255,.25)}
@@ -433,6 +434,34 @@ const MODS = [
              'kg = lb × 0.4536 · L = kg ÷ density. Jet A-1 density: 0.775 to 0.840 kg/L depending on temperature; use the figure on the fuel receipt.') };
   } },
 
+{ id: 'order', g: 'quick', t: L('Commande carburant', 'Fuel order'), s: L('Litres par aile à demander, règle maison et valeur exacte', 'Litres per wing to order, house rule and exact value'),
+  f: [
+    { id: 'want', l: L('Quantité voulue', 'Required fuel'), u: FU, d: 2600 },
+    { id: 'cur', l: L('Quantité à bord', 'Fuel on board'), u: FU, d: 900 },
+    { id: 'k', l: L('Facteur maison', 'House factor'), u: 'L/aile', d: 0.32 },
+    { id: 'rho', l: L('Densité du jour', 'Today’s density'), u: 'kg/L', d: 0.8 },
+    { id: 'tanks', l: L('Nombre de réservoirs', 'Number of tanks'), u: '', d: 2 },
+  ],
+  c: v => {
+    const need = v.want - v.cur;
+    if (!(need > 0) || !(v.tanks >= 1) || !(v.rho > 0)) return null;
+    const m2kg = fu === 'kg' ? 1 : LB_KG;
+    const ruleW = need * v.k, ruleT = ruleW * v.tanks;
+    const exactT = need * m2kg / v.rho, exactW = exactT / v.tanks;
+    const final = v.cur + toFU(ruleT * v.rho), over = final - v.want;
+    const implied = m2kg / (v.tanks * v.k);
+    return { o: [
+      { l: L('À demander, par aile (règle)', 'To order, per wing (rule)'), v: Math.ceil(ruleW), u: 'L', p: 0, big: 1 },
+      { l: L('Total à demander (règle)', 'Total to order (rule)'), v: Math.ceil(ruleW) * v.tanks, u: 'L', p: 0 },
+      { l: L('Exact par aile à cette densité', 'Exact per wing at this density'), v: Math.ceil(exactW), u: 'L', p: 0 },
+      { l: L('Exact au total', 'Exact total'), v: Math.ceil(exactT), u: 'L', p: 0 },
+      { l: L('Carburant final attendu (règle)', 'Expected final fuel (rule)'), v: final, u: fu, p: 0 },
+      { l: L('Au-dessus de la quantité voulue', 'Above required fuel'), v: over, u: fu, p: 0, sign: 1, cls: over < 0 ? 'warn' : '' },
+      { l: L('Densité supposée par le facteur', 'Density implied by the factor'), v: implied, u: 'kg/L', p: 3 },
+    ], n: L('Règle : (voulu − à bord) × facteur = litres par aile. Le facteur 0,32 correspond à une densité d’environ 0,71 kg/L : il donne une marge par rapport au Jet A-1 réel (0,775 à 0,840). La ligne « au-dessus » montre ce que cette marge ajoute à la masse.',
+             'Rule: (required − on board) × factor = litres per wing. A 0.32 factor implies a density of about 0.71 kg/L, which builds in a margin over real Jet A-1 (0.775 to 0.840). The “above” line shows the extra mass that margin adds.') };
+  } },
+
 { id: 'uplift', g: 'perf', t: L('Contrôle avitaillement', 'Fuel uplift check'), s: L('Jauges contre litres livrés', 'Gauges against litres delivered'),
   f: [
     { id: 'pre', l: L('Carburant avant (jauges)', 'Fuel before (gauges)'), u: FU, d: 900 },
@@ -506,6 +535,7 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 function renderHome() {
   ttl.textContent = 'Flightcalc';
+  ttl.classList.remove('sm');
   back.hidden = true;
   document.title = 'Flightcalc';
   view.innerHTML = GROUPS.map(([g, gl]) => {
@@ -575,6 +605,7 @@ function computeAndShow(m) {
 
 function renderMod(m) {
   ttl.textContent = t(m.t);
+  ttl.classList.toggle('sm', t(m.t).length > 16);
   document.title = t(m.t) + ' · Flightcalc';
   back.hidden = false;
   document.getElementById('backtx').textContent = t(UI.back);
