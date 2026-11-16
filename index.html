@@ -71,6 +71,9 @@ main{max-width:640px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-lef
 .seg button{border:0;background:var(--surface);padding:6px 14px;font:600 .9rem var(--f-mono);cursor:pointer;color:var(--muted)}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--navy);color:var(--on-navy)}
+.tip{display:flex;gap:10px;align-items:flex-start;background:var(--accent-soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:4px}
+.tip p{margin:0;flex:1;font-size:.9rem}
+.tip .iconbtn{color:var(--muted);padding:2px 6px}
 .foot{margin-top:24px;font-size:.82rem;color:var(--muted)}
 
 /* Outil */
@@ -163,6 +166,8 @@ const UI = {
   foot: { fr: 'Outil d’aide au calcul mental et à la vérification. Il ne remplace ni l’AFM, ni le manuel d’exploitation, ni les cartes et l’AIP. Les valeurs saisies restent sur cet appareil.',
           en: 'A cross-check aid for mental arithmetic. It does not replace the AFM, the operations manual, charts or the AIP. Your entries stay on this device.' },
   sign: { fr: 'Changer le signe', en: 'Toggle sign' },
+  install: { fr: 'Installer sur l’iPhone : touchez Partager, puis « Sur l’écran d’accueil ». L’app marchera ensuite sans réseau.', en: 'Install on iPhone: tap Share, then “Add to Home Screen”. The app then works offline.' },
+  close: { fr: 'Fermer', en: 'Close' },
   settings: { fr: 'Réglages', en: 'Settings' },
   fuelUnit: { fr: 'Unité de masse carburant', en: 'Fuel mass unit' },
   fuelUnitS: { fr: 'Pour l’avitaillement, l’autonomie et l’ETA', en: 'Used by uplift, endurance and ETA' },
@@ -538,11 +543,15 @@ function renderHome() {
   ttl.classList.remove('sm');
   back.hidden = true;
   document.title = 'Flightcalc';
-  view.innerHTML = GROUPS.map(([g, gl]) => {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent), standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  const tip = ios && !standalone && location.protocol === 'https:' && window.top === window.self && !sget('tipDone')
+    ? `<div class="tip" id="tip"><p>${esc(t(UI.install))}</p><button type="button" class="iconbtn" id="tipx" aria-label="${esc(t(UI.close))}">✕</button></div>` : '';
+  view.innerHTML = tip + GROUPS.map(([g, gl]) => {
     const ms_ = MODS.filter(m => m.g === g);
     return `<section class="grp"><h2>${esc(t(gl))}</h2><div class="list">${ms_.map(m =>
       `<a class="row" href="#${m.id}"><span class="tx"><b>${esc(t(m.t))}</b><span>${esc(t(m.s))}</span></span><span class="chev" aria-hidden="true">›</span></a>`).join('')}</div></section>`;
   }).join('') + `<section class="grp"><h2>${esc(t(UI.settings))}</h2><div class="list"><div class="row set"><span class="tx"><b>${esc(t(UI.fuelUnit))}</b><span>${esc(t(UI.fuelUnitS))}</span></span><span class="seg" role="group" aria-label="${esc(t(UI.fuelUnit))}">${['lb', 'kg'].map(u => `<button type="button" data-fu="${u}" aria-pressed="${fu === u}">${u}</button>`).join('')}</span></div></div></section><p class="foot">${esc(t(UI.foot))}</p>`;
+  const tx = document.getElementById('tipx'); if (tx) tx.addEventListener('click', () => { sset('tipDone', '1'); document.getElementById('tip').remove(); });
   view.querySelectorAll('[data-fu]').forEach(b => b.addEventListener('click', () => { fu = b.dataset.fu; sset('fu', fu); renderHome(); }));
 }
 
@@ -663,7 +672,7 @@ window.addEventListener('hashchange', route);
 route();
 
 window.FC = { MODS, fmt };
-if ('serviceWorker' in navigator && location.protocol === 'https:' && window.top === window.self) {
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && window.top === window.self) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 })();

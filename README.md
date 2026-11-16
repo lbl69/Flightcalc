@@ -18,11 +18,13 @@ Les valeurs saisies sont mémorisées sur l'appareil. L'unité de masse carburan
 
 ## Installer sur l'iPhone
 
-1. Dans GitHub : **Settings → Pages → Source : Deploy from a branch**, choisir la branche et `/ (root)`.
-2. Ouvrir l'adresse `https://<utilisateur>.github.io/Flightcalc/` dans Safari.
-3. Partager → **Sur l'écran d'accueil**.
+1. Une seule fois, sur GitHub : **Settings → Pages → Build and deployment → Source : Deploy from a branch**,
+   choisir la branche `claude/ecstatic-noether-ibbr06` (ou `main` une fois fusionnée) et le dossier `/ (root)`, puis **Save**.
+2. Après une à deux minutes, ouvrir **https://lbl69.github.io/Flightcalc/** dans **Safari**.
+3. Toucher **Partager → Sur l'écran d'accueil**.
 
-L'app fonctionne ensuite sans réseau.
+L'app s'ouvre ensuite en plein écran et fonctionne sans réseau. Les mises à jour arrivent
+automatiquement à la prochaine ouverture avec du réseau.
 
 ## Structure
 
